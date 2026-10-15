@@ -1,0 +1,7 @@
+{
+  "name": "fde-browser-regressions",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node operations.mjs" },
+  "devDependencies": { "playwright": "1.59.0" }
+}

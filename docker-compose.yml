@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: fde
+      POSTGRES_USER: fde
+      POSTGRES_PASSWORD: fde
+    volumes:
+      - fde_pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql+psycopg2://fde:fde@db:5432/fde
+      DEV_MODE: "false"
+    depends_on:
+      - db
+    ports:
+      - "8000:8000"
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+volumes:
+  fde_pgdata:

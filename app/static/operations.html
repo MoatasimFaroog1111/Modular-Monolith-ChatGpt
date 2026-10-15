@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FDE | إدارة تشغيل المصنع</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./static/operations.css">
+  <script src="./static/operations-config.js"></script>
+  <script defer src="./static/operations.js"></script>
+  <script defer src="./static/finance.js"></script>
+</head>
+<body>
+<a class="skip" href="#workspace">تجاوز إلى المحتوى</a>
+<header class="topbar">
+  <div class="brand">
+    <svg aria-label="شعار FDE" width="34" height="34" viewBox="0 0 32 32" fill="none">
+      <path d="M4 26V12L16 5l12 7v14H4Z M11 26V15h10v11 M4 12l12 7 12-7" stroke="currentColor" stroke-width="2"/>
+    </svg>
+    <div><strong>FDE / تشغيل المصنع</strong><span>المصنع • المراجعة • التكلفة</span></div>
+  </div>
+  <div class="top-actions">
+    <label for="actor">مستخدم التجربة</label>
+    <select id="actor">
+      <option value="gm1">المدير العام</option><option value="eng1">المهندس</option>
+      <option value="acc1">المحاسب</option><option value="fin1">المدير المالي</option>
+      <option value="aud1">المدقق</option><option value="wh1">أمين المستودع</option>
+    </select>
+    <button type="button" id="theme-toggle" class="quiet">الوضع الداكن</button>
+  </div>
+</header>
+<div class="shell">
+  <aside>
+    <p class="eyebrow">مساحة العمل</p>
+    <nav aria-label="أقسام التشغيل">
+      <button data-panel="centers" class="active" aria-current="page">مراكز العمل <span>01</span></button>
+      <button data-panel="landed">الشحن والجمارك <span>02</span></button>
+      <button data-panel="weekly">التقارير الأسبوعية <span>03</span></button>
+      <button data-panel="finance">التكلفة والإقفال <span>04</span></button>
+    </nav>
+    <p class="sidebar-note">صلاحيات كل إجراء تُفحص في الخادم. اختيار المستخدم هنا للتجربة فقط، وليس تسجيل دخول إنتاجياً.</p>
+    <a class="return-link" href="./">طلبات المواد والمتابعة</a>
+  </aside>
+  <main id="workspace">
+    <div class="page-heading"><div><p class="eyebrow">إدارة العمليات</p><h1 id="page-title">مراكز العمل</h1></div>
+      <span class="environment">بيئة تطوير</span></div>
+    <div id="notice" role="status" aria-live="polite" hidden></div>
+    <section id="centers" aria-labelledby="centers-title">
+      <div class="section-heading"><div><h2 id="centers-title">تسعير ساعة العمل</h2>
+        <p>أسعار بالريال لكل ساعة شخص. التقارير السابقة تحتفظ بالسعر المسجل وقت إدخالها.</p></div>
+        <button id="refresh-centers" class="quiet">تحديث القائمة</button></div>
+      <form id="center-form" class="surface inline-form">
+        <div><label for="center-name">اسم مركز العمل</label><input id="center-name" maxlength="64" required placeholder="مثال: تجميع الفريمات"></div>
+        <div><label for="center-rate">سعر ساعة الشخص / SAR</label><input id="center-rate" type="number" min="0" max="99999999.99" step=".01" required placeholder="0.00"></div>
+        <button id="center-create" disabled>إضافة مركز عمل</button>
+      </form>
+      <div class="surface table-wrap"><table><caption class="sr-only">قائمة مراكز العمل</caption>
+        <thead><tr><th>المركز</th><th>السعر / ساعة شخص</th><th>الحالة</th><th>الإصدار</th><th>الإجراء</th></tr></thead>
+        <tbody id="centers-body"></tbody></table></div>
+      <p class="mobile-hint hint">مرّر الجداول أفقياً لعرض جميع الأعمدة وأزرار الحفظ.</p>
+      <div class="section-heading"><div><h2>تخطيط أوامر العمل</h2><p>ربط المرحلة بالمركز وتحديد ساعات الأشخاص التقديرية، قبل بدء التنفيذ.</p></div></div>
+      <div class="surface"><label for="plan-unit">الوحدة الإنتاجية</label><select id="plan-unit"></select>
+        <div class="table-wrap"><table><thead><tr><th>المرحلة</th><th>الحالة</th><th>المركز</th><th>ساعات مقدرة</th><th>الإجراء</th></tr></thead><tbody id="plans-body"></tbody></table></div>
+      </div>
+    </section>
+    <section id="landed" hidden aria-labelledby="landed-title">
+      <div class="section-heading"><div><h2 id="landed-title">توزيع تكاليف الحاويات</h2>
+        <p>لا تدخل المسودة في تكلفة الوحدة حتى يعتمدها المدير العام أو المالي، بخلاف مُعدّها.</p></div></div>
+      <form id="allocation-form" class="surface">
+        <div class="grid">
+          <div><label for="source-reference">مرجع المستند الفريد</label><input id="source-reference" required maxlength="128" placeholder="SHIP-2026-001"></div>
+          <div><label for="allocation-basis">أساس التوزيع</label><select id="allocation-basis"><option value="EQUAL">بالتساوي</option><option value="WEIGHT">بالوزن / كجم</option><option value="VALUE">بالقيمة / SAR</option></select></div>
+          <div><label for="freight">الشحن / SAR</label><input id="freight" type="number" min="0" step=".01" value="0" required></div>
+          <div><label for="customs">الجمارك / SAR</label><input id="customs" type="number" min="0" step=".01" value="0" required></div>
+        </div>
+        <label for="allocation-description">وصف المستند</label><input id="allocation-description" maxlength="512" placeholder="وصف فاتورة الشحن أو البيان الجمركي">
+        <div class="subheading"><h3>الحاويات المستفيدة</h3><button type="button" id="add-allocation-line" class="quiet">إضافة حاوية</button></div>
+        <div id="allocation-lines"></div>
+        <p class="hint">في التوزيع المتساوي تكون قيمة الأساس 1. الوزن بالكيلوجرام، والقيمة بالريال من مستند مؤيد؛ لا تُحتسب تلقائياً.</p>
+        <button id="allocation-create" disabled>حفظ مسودة للمراجعة</button>
+      </form>
+      <div class="section-heading"><h2>المسودات والتوزيعات المعتمدة</h2><button id="refresh-allocations" class="quiet">تحديث</button></div>
+      <div id="allocations-list"></div>
+    </section>
+    <section id="weekly" hidden aria-labelledby="weekly-title">
+      <div class="section-heading"><div><h2 id="weekly-title">تقرير تقدم أسبوعي</h2>
+        <p>أسبوع من الاثنين إلى الأحد. ساعات العمالة والتوقفات ونواقص المواد ضمن الفترة المحددة فقط.</p></div></div>
+      <form id="weekly-form" class="surface inline-form">
+        <div><label for="week-start">بداية الأسبوع / الاثنين</label><input id="week-start" type="date" required></div>
+        <div><label for="report-unit">الوحدة</label><select id="report-unit"></select></div>
+        <button>عرض التقرير</button><button type="button" id="weekly-csv" class="quiet">تنزيل CSV</button>
+      </form>
+      <p id="report-period" class="hint">اختر أسبوعاً لعرض التقرير.</p>
+      <div id="weekly-totals" class="metrics"></div>
+      <div class="surface table-wrap"><table><thead><tr><th>الوحدة</th><th>بداية / نهاية</th><th>زيادة الإنجاز</th><th>ساعات أشخاص</th><th>عمالة SAR</th><th>توقفات</th><th>نواقص مُبلّغ عنها</th></tr></thead><tbody id="weekly-body"></tbody></table></div>
+      <p class="hint">نسبة التقدم متوسط مراحل أوامر العمل المسجلة حتى تاريخ التقرير، وليست نسبة موزونة. النواقص هنا بلاغات خلال الأسبوع، وليست حكماً بأنها ما زالت مفتوحة.</p>
+    </section>
+    <section id="finance" hidden aria-labelledby="finance-title">
+      <div class="section-heading"><div><h2 id="finance-title">التسويات والمصاريف والإقفال المالي</h2>
+        <p>المسودات لا تغيّر التكلفة. الاعتماد لمستخدم آخر، والإقفال يحفظ لقطة ثابتة ببصمتها.</p></div>
+        <button type="button" id="finance-refresh" class="quiet">تحديث البيانات</button></div>
+      <form id="settlement-form" class="surface inline-form">
+        <div><label for="settlement-invoice">فاتورة مورد مطابقة أو باستثناء معتمد</label><select id="settlement-invoice" required></select></div>
+        <button id="settlement-create" disabled>إعداد تسوية السعر</button>
+      </form>
+      <p class="hint">تسوية موزونة على المخزون المقبول: فروق أسعار البنود فقط، دون إعادة تحميل الضريبة أو الشحن. تبقى الكمية غير المفوترة مبدئية بسعر PO.</p>
+      <div id="settlements-list"></div>
+      <div class="section-heading"><div><h2>مصاريف الوحدة والمعدات</h2><p>أدخل صافي المصروف والضريبة غير القابلة للاسترداد فقط. لا تضف مستنداً محملاً في الشحن أو ضمن سعر المواد.</p></div></div>
+      <form id="expense-form" class="surface">
+        <div class="grid">
+          <div><label for="expense-unit">الوحدة المستفيدة</label><select id="expense-unit" required></select></div>
+          <div><label for="expense-category">نوع المصروف</label><select id="expense-category"><option value="DIRECT">مصروف مباشر</option><option value="EQUIPMENT">معدات</option></select></div>
+          <div><label for="expense-reference">مرجع المستند الفريد</label><input id="expense-reference" required maxlength="128"></div>
+          <div><label for="expense-date">تاريخ المصروف</label><input id="expense-date" type="date" required></div>
+          <div><label for="expense-net">صافي المبلغ / SAR</label><input id="expense-net" type="number" min=".01" max="9999999999.99" step=".01" required></div>
+          <div><label for="expense-tax">ضريبة غير مستردة / SAR</label><input id="expense-tax" type="number" min="0" max="9999999999.99" step=".01" value="0" required></div>
+        </div>
+        <label for="expense-description">وصف المصروف والمستند</label><input id="expense-description" minlength="3" maxlength="512" required>
+        <button id="expense-create" disabled>حفظ مسودة مصروف</button>
+      </form>
+      <div id="expenses-list"></div>
+      <div class="section-heading"><div><h2>فحص التكلفة والإقفال</h2><p>اكتمال الإنتاج لا يعني الإقفال المالي. يفحص النظام الفواتير والتسويات والأسعار والمسودات قبل الإقفال.</p></div></div>
+      <form id="close-check-form" class="surface inline-form">
+        <div><label for="close-unit">الوحدة المطلوب فحصها</label><select id="close-unit" required></select></div>
+        <button id="close-check" type="submit">فحص ومراجعة التكلفة</button>
+      </form>
+      <div id="close-results" aria-live="polite"></div>
+      <form id="close-action-form" class="surface" hidden>
+        <label for="close-note">مذكرة الإقفال أو سبب إعادة الفتح</label><input id="close-note" minlength="3" maxlength="512" required>
+        <button id="financial-close-button" disabled>إقفال مالي وتثبيت التكلفة</button>
+        <button id="financial-reopen-button" type="button" class="quiet" hidden>إعادة فتح مخولة</button>
+      </form>
+      <div id="close-history"></div>
+    </section>
+    <footer>FDE • منصة التشغيل والموافقات</footer>
+  </main>
+</div>
+</body>
+</html>

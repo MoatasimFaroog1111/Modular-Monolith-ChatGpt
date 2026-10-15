@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FDE — منصة التشغيل والموافقات</title>
+<style>
+  * { box-sizing: border-box; font-family: "Segoe UI", Tahoma, Arial, sans-serif; }
+  body { margin: 0; background: #f4f6f9; color: #1a2333; }
+  header { background: #12395b; color: #fff; padding: 14px 24px; }
+  header h1 { margin: 0; font-size: 20px; }
+  header span { font-size: 12px; opacity: .8; }
+  .wrap { max-width: 980px; margin: 24px auto; padding: 0 16px; }
+  .card { background: #fff; border-radius: 10px; padding: 20px; margin-bottom: 20px;
+          box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+  h2 { font-size: 16px; margin: 0 0 14px; color: #12395b; }
+  label { display: block; font-size: 13px; margin: 8px 0 4px; color: #445; }
+  input, select, textarea { width: 100%; padding: 8px 10px; border: 1px solid #ccd;
+        border-radius: 6px; font-size: 14px; }
+  .row { display: flex; gap: 12px; } .row > div { flex: 1; }
+  button { background: #1a6fb5; color: #fff; border: 0; padding: 10px 22px;
+           border-radius: 6px; font-size: 14px; cursor: pointer; margin-top: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 8px 10px; border-bottom: 1px solid #e6eaf0; text-align: right; }
+  th { background: #eef2f7; color: #12395b; }
+  .badge { padding: 2px 10px; border-radius: 12px; font-size: 11px; }
+  .msg { margin: 10px 0; padding: 10px; border-radius: 6px; font-size: 13px; }
+  .ok { background: #e6f6ec; color: #14532d; } .err { background: #fde8e8; color: #7f1d1d; }
+  #userbar { font-size: 12px; margin-top: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <a href="./operations" style="color:inherit;float:left">إدارة مراكز العمل والتكاليف والتقارير</a>
+  <h1>منصة FDE — طلب المواد والمشتريات</h1>
+  <span>مصنع البيوت الجاهزة — Modular Monolith</span>
+  <div id="userbar">
+    المستخدم الحالي:
+    <select id="user" onchange="loadRequests()">
+      <option value="eng1">eng1 — مهندس</option>
+      <option value="proc1">proc1 — مشتريات</option>
+      <option value="gm1">gm1 — مدير عام</option>
+      <option value="wh1">wh1 — مستودع</option>
+      <option value="acc1">acc1 — محاسب</option>
+      <option value="fin1">fin1 — مدير مالي</option>
+      <option value="aud1">aud1 — مدقق</option>
+    </select>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <h2>إنشاء طلب مادة</h2>
+    <div class="msg" id="formMsg" style="display:none"></div>
+    <div class="row">
+      <div><label>الوصف</label><input id="item_description" value="Gypsum Board MR 12.5mm"></div>
+      <div><label>الكمية</label><input id="quantity" type="number" value="120"></div>
+      <div><label>الوحدة</label><input id="uom" value="Sheet"></div>
+    </div>
+    <div class="row">
+      <div><label>تاريخ الاحتياج</label><input id="need_by_date" type="date"></div>
+      <div><label>الأولوية</label>
+        <select id="priority"><option>NORMAL</option><option>URGENT</option><option>STOPPING</option></select></div>
+      <div><label>مركز التكلفة</label><input id="budget_code" value="PRJ-001/H-07"></div>
+    </div>
+    <div class="row">
+      <div><label>السبب</label><input id="purpose" value="إغلاق الجدران الداخلية"></div>
+    </div>
+    <button onclick="createRequest()">إرسال الطلب</button>
+  </div>
+
+  <div class="card">
+    <h2>لوحة المصنع — تقدم الوحدات والتكلفة</h2>
+    <table>
+      <thead><tr><th>الوحدة</th><th>المسار</th><th>الإنجاز %</th><th>ساعات فعلية</th><th>توقفات</th><th>مواد ناقصة</th></tr></thead>
+      <tbody id="factoryUnits"></tbody>
+    </table>
+    <h2 style="margin-top:20px">انحراف التكلفة عن BoM</h2>
+    <table>
+      <thead><tr><th>الوحدة</th><th>مقدر</th><th>فعلي</th><th>الانحراف</th></tr></thead>
+      <tbody id="costUnits"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>الطلبات</h2>
+    <div class="msg" id="listMsg" style="display:none"></div>
+    <table>
+      <thead><tr><th>الرقم</th><th>المادة</th><th>الكمية</th><th>الحالة</th><th>خط زمني</th></tr></thead>
+      <tbody id="requests"></tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+const API = '/api/v1';
+const statusLabels = {
+  DRAFT:'مسودة', NEEDS_INFORMATION:'ناقص معلومات', TECHNICALLY_VALIDATED:'تم التحقق الفني',
+  SOURCING:'جمع عروض', QUOTATIONS_RECEIVED:'عروض مستلمة', PENDING_GM_APPROVAL:'بانتظار موافقة المدير',
+  APPROVED:'معتمد', PO_ISSUED:'أمر شراء صادر', PAYMENT_PENDING:'بانتظار الدفع',
+  DELIVERY_PENDING:'بانتظار التوريد', PARTIALLY_RECEIVED:'مستلم جزئياً', RECEIVED:'مستلم',
+  QC_HOLD:'حجر جودة', REJECTED:'مرفوض', ACCEPTED:'مقبول', INVOICE_PENDING:'بانتظار فاتورة',
+  MATCHING:'مطابقة', EXCEPTION:'استثناء', READY_TO_POST:'جاهز للترحيل',
+  POSTED_TO_ERP:'مرحّل للـERP', PAID_OR_RECONCILED:'مدفوع/مسوى', CLOSED:'مغلق'
+};
+function badgeColor(s){
+  if (['CLOSED','PAID_OR_RECONCILED','POSTED_TO_ERP'].includes(s)) return '#d1fae5';
+  if (['EXCEPTION','QC_HOLD','REJECTED','NEEDS_INFORMATION'].includes(s)) return '#fde8e8';
+  return '#e0ecf7';
+}
+async function api(method, path, body){
+  const opts = { method, headers: { 'X-User': document.getElementById('user').value,
+    'Content-Type':'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(API + path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || 'خطأ غير متوقع');
+  return data;
+}
+async function createRequest(){
+  const msg = document.getElementById('formMsg');
+  msg.style.display='block'; msg.className='msg';
+  try {
+    const body = {
+      item_description: document.getElementById('item_description').value,
+      quantity: parseFloat(document.getElementById('quantity').value),
+      uom: document.getElementById('uom').value,
+      need_by_date: document.getElementById('need_by_date').value ||
+        new Date(Date.now()+3*864e5).toISOString().slice(0,10),
+      priority: document.getElementById('priority').value,
+      budget_code: document.getElementById('budget_code').value,
+      purpose: document.getElementById('purpose').value,
+    };
+    const mr = await api('POST', '/material-requests', body);
+    msg.classList.add('ok');
+    msg.textContent = 'تم إنشاء الطلب ' + mr.request_no + ' (مسودة)';
+    loadRequests();
+  } catch (e) { msg.classList.add('err'); msg.textContent = e.message; }
+}
+function esc(s){
+  var map = {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'};
+  return String(s ?? '').replace(/[&<>"']/g, function(c){ return map[c]; });
+}
+async function loadRequests(){
+  try {
+    const rows = await api('GET', '/material-requests');
+    document.getElementById('requests').innerHTML = rows.map(r => `
+      <tr>
+        <td>${esc(r.request_no)}</td>
+        <td>${esc(r.item_description)}</td>
+        <td>${esc(r.quantity)} ${esc(r.uom)}</td>
+        <td><span class="badge" style="background:${badgeColor(r.status)}">${esc(statusLabels[r.status]||r.status)}</span></td>
+        <td><a href="#" onclick="showTimeline(${r.id});return false">عرض</a></td>
+      </tr>`).join('');
+  } catch (e) {
+    document.getElementById('listMsg').style.display='block';
+    document.getElementById('listMsg').className='msg err';
+    document.getElementById('listMsg').textContent = e.message;
+  }
+}
+async function showTimeline(id){
+  const events = await api('GET', `/material-requests/${id}/timeline`);
+  alert(events.map(e =>
+    `${e.created_at} | ${e.actor} | ${e.event} | ${JSON.stringify(e.after)}`
+  ).join('\n'));
+}
+async function loadDashboards(){
+  try {
+    const factory = await api('GET', '/dashboards/factory');
+    document.getElementById('factoryUnits').innerHTML = factory.units.map(u => `
+      <tr>
+        <td>${esc(u.house_no)}</td>
+        <td>${esc(u.build_method)}</td>
+        <td>${u.overall_percent}%</td>
+        <td>${esc(u.actual_hours)}</td>
+        <td>${esc(u.stoppage_hours)}</td>
+        <td>${u.open_material_shortages.length}</td>
+      </tr>`).join('');
+    const costs = await api('GET', '/dashboards/costs');
+    document.getElementById('costUnits').innerHTML = costs.units.map(u => `
+      <tr>
+        <td>${esc(u.house_no)}</td>
+        <td>${esc(u.estimated_total)}</td>
+        <td>${esc(u.actual_total)}</td>
+        <td>${esc(u.deviation_total)}</td>
+      </tr>`).join('');
+  } catch (e) { /* dashboards require specific roles */ }
+}
+loadRequests();
+loadDashboards();
+</script>
+</body>
+</html>
